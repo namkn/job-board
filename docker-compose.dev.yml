@@ -1,0 +1,33 @@
+# Dev overlay: live code from ./frontend and ./backend with hot reload.
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+#
+# node_modules live in named volumes (Linux binaries inside the container), not from your Mac folder.
+#
+# If Vite errors on "Failed to resolve react-router-dom", the frontend_node_modules volume is stale
+# (created before that dependency existed). Fix:
+#   docker compose ... exec frontend npm install
+# or: docker compose ... down && docker volume rm <project>_frontend_node_modules && ... up
+
+services:
+  backend:
+    volumes:
+      - ./backend:/app
+      - backend_node_modules:/app/node_modules
+    command:
+      - sh
+      - -c
+      - npm install && npx prisma generate && npx prisma migrate deploy && npm run dev
+
+  frontend:
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    command:
+      - sh
+      - -c
+      - npm install && npm run dev
+
+volumes:
+  backend_node_modules:
+  frontend_node_modules:

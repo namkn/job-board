@@ -63,3 +63,23 @@ export async function postJson<TResponse, TBody extends JsonValue>(
   return body as TResponse;
 }
 
+export async function patchJson<TResponse, TBody extends JsonValue>(
+  path: string,
+  payload: TBody,
+): Promise<TResponse> {
+  const res = await fetch(`${apiBase}${path}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const body = await parseJsonSafely(res);
+  if (!res.ok) {
+    const message =
+      typeof (body as any)?.error === "string"
+        ? (body as any).error
+        : `Request failed (${res.status})`;
+    throw new ApiError(message, res.status, body);
+  }
+  return body as TResponse;
+}
+

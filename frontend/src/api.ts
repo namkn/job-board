@@ -83,3 +83,16 @@ export async function patchJson<TResponse, TBody extends JsonValue>(
   return body as TResponse;
 }
 
+export async function deleteJson(path: string): Promise<void> {
+  const res = await fetch(`${apiBase}${path}`, { method: "DELETE" });
+  if (res.status === 204) return;
+  const body = await parseJsonSafely(res);
+  if (!res.ok) {
+    const message =
+      typeof (body as any)?.error === "string"
+        ? (body as any).error
+        : `Request failed (${res.status})`;
+    throw new ApiError(message, res.status, body);
+  }
+}
+

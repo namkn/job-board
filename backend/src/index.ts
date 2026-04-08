@@ -137,6 +137,28 @@ app.patch("/jobs/:id", async (req, res) => {
   }
 });
 
+app.delete("/jobs/:id", async (req, res) => {
+  const { id } = req.params;
+  if (!id) {
+    res.status(400).json({ error: "Missing job id" });
+    return;
+  }
+
+  try {
+    await prisma.job.delete({ where: { id } });
+    res.status(204).send();
+  } catch (e) {
+    if (
+      e instanceof Prisma.PrismaClientKnownRequestError &&
+      e.code === "P2025"
+    ) {
+      res.status(404).json({ error: "Job not found" });
+      return;
+    }
+    res.status(500).json({ error: "Failed to delete job" });
+  }
+});
+
 app.listen(port, "0.0.0.0", () => {
   console.log(`API listening on http://0.0.0.0:${port}`);
 });

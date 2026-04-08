@@ -1,17 +1,20 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { ApiError, getJson, patchJson } from "../api";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { IconPencil, IconTrash } from "../components/Icons";
+import { ApiError, deleteJson, getJson, patchJson } from "../api";
 import type { Job } from "../types/job";
 import { formatDt } from "../utils/format";
 
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const [editTitle, setEditTitle] = useState("");
   const [editCompany, setEditCompany] = useState("");
@@ -79,6 +82,27 @@ export default function JobDetailPage() {
       setError(e instanceof Error ? e.message : "Could not update job");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!job || !id) return;
+    if (
+      !window.confirm(
+        `Delete “${job.title}”? This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    setError(null);
+    setDeleting(true);
+    try {
+      await deleteJson(`/jobs/${encodeURIComponent(id)}`);
+      navigate("/", { replace: true });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not delete job");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -166,9 +190,28 @@ export default function JobDetailPage() {
             <>
               <div className="detail-header">
                 <h1 className="detail-title">{job.title}</h1>
-                <button type="button" className="btn-edit" onClick={beginEdit}>
-                  Edit
-                </button>
+                <div className="detail-header-actions">
+                  <button
+                    type="button"
+                    className="btn-edit"
+                    onClick={beginEdit}
+                    disabled={deleting}
+                  >
+                    <IconPencil className="btn-edit-icon" />
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-delete"
+                    title="Delete job"
+                    aria-label="Delete job"
+                    disabled={deleting}
+                    onClick={() => void handleDelete()}
+                  >
+                    <IconTrash className="btn-delete-icon" />
+                    Delete
+                  </button>
+                </div>
               </div>
               <div className="job-meta detail-meta">
                 {job.company} · {job.location}

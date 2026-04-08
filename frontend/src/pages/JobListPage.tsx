@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getJson, postJson } from "../api";
+import { IconTrash } from "../components/Icons";
+import { deleteJson, getJson, postJson } from "../api";
 import type { Job } from "../types/job";
 import { formatDt } from "../utils/format";
 
@@ -14,6 +15,7 @@ export default function JobListPage() {
   const [company, setCompany] = useState("");
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const loadJobs = useCallback(async () => {
     setError(null);
@@ -50,6 +52,26 @@ export default function JobListPage() {
       setError(e instanceof Error ? e.message : "Could not create job");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleDelete(job: Job) {
+    if (
+      !window.confirm(
+        `Delete “${job.title}”? This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    setError(null);
+    setDeletingId(job.id);
+    try {
+      await deleteJson(`/jobs/${encodeURIComponent(job.id)}`);
+      await loadJobs();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not delete job");
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -112,14 +134,27 @@ export default function JobListPage() {
           <ul className="job-list">
             {jobs.map((job) => (
               <li key={job.id} className="job-card">
-                <h3 className="job-card-title">
-                  <Link
-                    to={`/jobs/${job.id}`}
-                    className="job-title-link"
+                <div className="job-card-header-row">
+                  <h3 className="job-card-title">
+                    <Link
+                      to={`/jobs/${job.id}`}
+                      className="job-title-link"
+                    >
+                      {job.title}
+                    </Link>
+                  </h3>
+                  <button
+                    type="button"
+                    className="btn-delete"
+                    disabled={deletingId === job.id}
+                    title="Delete job"
+                    aria-label={`Delete job: ${job.title}`}
+                    onClick={() => void handleDelete(job)}
                   >
-                    {job.title}
-                  </Link>
-                </h3>
+                    <IconTrash className="btn-delete-icon" />
+                    Delete
+                  </button>
+                </div>
                 <div className="job-meta">
                   {job.company} · {job.location}
                 </div>

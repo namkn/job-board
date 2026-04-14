@@ -12,7 +12,6 @@ export default function JobListPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const [title, setTitle] = useState("");
-  const [company, setCompany] = useState("");
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -41,10 +40,9 @@ export default function JobListPage() {
     try {
       await postJson<
         Job,
-        { title: string; company: string; location: string; description: string }
-      >("/jobs", { title, company, location, description });
+        { title: string; location: string; description: string }
+      >("/jobs", { title, location, description });
       setTitle("");
-      setCompany("");
       setLocation("");
       setDescription("");
       await loadJobs();
@@ -88,15 +86,6 @@ export default function JobListPage() {
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              required
-              maxLength={200}
-            />
-          </label>
-          <label>
-            Company
-            <input
-              value={company}
-              onChange={(e) => setCompany(e.target.value)}
               required
               maxLength={200}
             />
@@ -156,7 +145,7 @@ export default function JobListPage() {
                   </button>
                 </div>
                 <div className="job-meta">
-                  {job.company} · {job.location}
+                  {job.organization.name} · {job.location}
                 </div>
                 <div className="job-times">
                   <span>Created {formatDt(job.createdAt)}</span>

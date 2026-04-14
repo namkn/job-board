@@ -17,7 +17,6 @@ export default function JobDetailPage() {
   const [deleting, setDeleting] = useState(false);
 
   const [editTitle, setEditTitle] = useState("");
-  const [editCompany, setEditCompany] = useState("");
   const [editLocation, setEditLocation] = useState("");
   const [editDescription, setEditDescription] = useState("");
 
@@ -49,7 +48,6 @@ export default function JobDetailPage() {
   function beginEdit() {
     if (!job) return;
     setEditTitle(job.title);
-    setEditCompany(job.company);
     setEditLocation(job.location);
     setEditDescription(job.description);
     setEditing(true);
@@ -69,10 +67,9 @@ export default function JobDetailPage() {
     try {
       const updated = await patchJson<
         Job,
-        { title: string; company: string; location: string; description: string }
+        { title: string; location: string; description: string }
       >(`/jobs/${encodeURIComponent(id)}`, {
         title: editTitle,
-        company: editCompany,
         location: editLocation,
         description: editDescription,
       });
@@ -146,15 +143,6 @@ export default function JobDetailPage() {
                   />
                 </label>
                 <label>
-                  Company
-                  <input
-                    value={editCompany}
-                    onChange={(e) => setEditCompany(e.target.value)}
-                    required
-                    maxLength={200}
-                  />
-                </label>
-                <label>
                   Location
                   <input
                     value={editLocation}
@@ -214,7 +202,7 @@ export default function JobDetailPage() {
                 </div>
               </div>
               <div className="job-meta detail-meta">
-                {job.company} · {job.location}
+                {job.organization.name} · {job.location}
               </div>
               <div className="job-times">
                 <span>Created {formatDt(job.createdAt)}</span>

@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { IconPencil, IconTrash } from "../components/Icons";
-import { ApiError, deleteJson, getJson, patchJson } from "../api";
+import {
+  ApiError,
+  deleteJson,
+  getJson,
+  patchJson,
+} from "../api";
 import type { Job } from "../types/job";
 import { formatDt } from "../utils/format";
 
@@ -39,11 +44,11 @@ export default function JobDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, navigate]);
 
   useEffect(() => {
     void loadJob();
-  }, [loadJob]);
+  }, [navigate, loadJob]);
 
   function beginEdit() {
     if (!job) return;
@@ -95,7 +100,7 @@ export default function JobDetailPage() {
     setDeleting(true);
     try {
       await deleteJson(`/jobs/${encodeURIComponent(id)}`);
-      navigate("/", { replace: true });
+      navigate("/employers/jobs", { replace: true });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not delete job");
     } finally {
@@ -106,7 +111,7 @@ export default function JobDetailPage() {
   return (
     <div className="app">
       <nav className="detail-nav">
-        <Link to="/" className="back-link">
+        <Link to="/employers/jobs" className="back-link">
           ← All jobs
         </Link>
       </nav>
@@ -117,7 +122,7 @@ export default function JobDetailPage() {
         <section className="detail-panel">
           <h1>Job not found</h1>
           <p className="empty">This job may have been removed.</p>
-          <Link to="/">Back to job board</Link>
+          <Link to="/employers/jobs">Back to job board</Link>
         </section>
       ) : error && !job ? (
         <section className="detail-panel">

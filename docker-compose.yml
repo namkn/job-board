@@ -23,6 +23,7 @@ services:
       - "3000:3000"
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-jobboard}:${POSTGRES_PASSWORD:-jobboard}@postgres:5432/${POSTGRES_DB:-jobboard}
+      JWT_SECRET: ${JWT_SECRET:-dev-only-change-me}
       PORT: 3000
     depends_on:
       postgres:

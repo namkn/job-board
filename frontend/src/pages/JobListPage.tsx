@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { IconTrash } from "../components/Icons";
-import { deleteJson, getJson, postJson } from "../api";
+import {
+  deleteJson,
+  getJson,
+  postJson,
+} from "../api";
 import type { Job } from "../types/job";
 import { formatDt } from "../utils/format";
 
 export default function JobListPage() {
+  const navigate = useNavigate();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,11 +32,11 @@ export default function JobListPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     void loadJobs();
-  }, [loadJobs]);
+  }, [navigate, loadJobs]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -74,8 +79,8 @@ export default function JobListPage() {
   }
 
   return (
-    <div className="app">
-      <h1>Job Board</h1>
+    <>
+      <h1>Your jobs</h1>
 
       <section>
         <h2>Post a job</h2>
@@ -126,7 +131,7 @@ export default function JobListPage() {
                 <div className="job-card-header-row">
                   <h3 className="job-card-title">
                     <Link
-                      to={`/jobs/${job.id}`}
+                      to={`/employers/jobs/${job.id}`}
                       className="job-title-link"
                     >
                       {job.title}
@@ -162,6 +167,6 @@ export default function JobListPage() {
           </ul>
         )}
       </section>
-    </div>
+    </>
   );
 }

@@ -18,6 +18,22 @@ function jobIdParam(req: express.Request): string | undefined {
   return undefined;
 }
 
+function queryInt(
+  req: express.Request,
+  key: string,
+): number | undefined {
+  const raw = (req.query as Record<string, unknown>)[key];
+  if (typeof raw === "string") {
+    const n = Number.parseInt(raw, 10);
+    return Number.isFinite(n) ? n : undefined;
+  }
+  if (Array.isArray(raw) && typeof raw[0] === "string") {
+    const n = Number.parseInt(raw[0], 10);
+    return Number.isFinite(n) ? n : undefined;
+  }
+  return undefined;
+}
+
 const jobOrganizationSelect = {
   id: true,
   name: true,
@@ -216,13 +232,32 @@ app.post("/auth/employers/login", async (req, res) => {
 
 app.get("/jobs", requireEmployerJwt, async (req, res) => {
   const organizationId = req.employer!.organizationId;
+  const page = Math.max(1, queryInt(req, "page") ?? 1);
+  const pageSizeRaw = queryInt(req, "pageSize") ?? 5;
+  const pageSize = Math.min(50, Math.max(1, pageSizeRaw));
+  const skip = (page - 1) * pageSize;
+
   try {
-    const jobs = await prisma.job.findMany({
-      where: { organizationId },
-      orderBy: { createdAt: "desc" },
-      include: { organization: { select: jobOrganizationSelect } },
+    const [total, items] = await prisma.$transaction([
+      prisma.job.count({ where: { organizationId } }),
+      prisma.job.findMany({
+        where: { organizationId },
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: pageSize,
+        include: { organization: { select: jobOrganizationSelect } },
+      }),
+    ]);
+
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+    res.json({
+      items,
+      page,
+      pageSize,
+      total,
+      totalPages,
     });
-    res.json(jobs);
   } catch {
     res.status(500).json({ error: "Failed to fetch jobs" });
   }

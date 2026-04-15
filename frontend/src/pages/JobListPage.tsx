@@ -7,6 +7,7 @@ import {
   postJson,
 } from "../api";
 import type { Job } from "../types/job";
+import type { PageResult } from "../types/pagination";
 import { formatDt } from "../utils/format";
 
 export default function JobListPage() {
@@ -15,6 +16,8 @@ export default function JobListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   const [title, setTitle] = useState("");
   const [location, setLocation] = useState("");
@@ -25,14 +28,17 @@ export default function JobListPage() {
     setError(null);
     setLoading(true);
     try {
-      const data = await getJson<Job[]>("/jobs");
-      setJobs(data);
+      const data = await getJson<PageResult<Job>>(
+        `/jobs?page=${encodeURIComponent(String(page))}&pageSize=5`,
+      );
+      setJobs(data.items);
+      setTotalPages(data.totalPages);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load jobs");
     } finally {
       setLoading(false);
     }
-  }, [navigate]);
+  }, [navigate, page]);
 
   useEffect(() => {
     void loadJobs();
@@ -50,6 +56,7 @@ export default function JobListPage() {
       setTitle("");
       setLocation("");
       setDescription("");
+      setPage(1);
       await loadJobs();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not create job");
@@ -70,6 +77,9 @@ export default function JobListPage() {
     setDeletingId(job.id);
     try {
       await deleteJson(`/jobs/${encodeURIComponent(job.id)}`);
+      if (jobs.length === 1 && page > 1) {
+        setPage((p) => p - 1);
+      }
       await loadJobs();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not delete job");
@@ -166,6 +176,30 @@ export default function JobListPage() {
             ))}
           </ul>
         )}
+
+        {!loading && totalPages > 1 ? (
+          <div className="pagination">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+            >
+              Prev
+            </button>
+            <span className="pagination-meta">
+              Page {page} of {totalPages}
+            </span>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+            >
+              Next
+            </button>
+          </div>
+        ) : null}
       </section>
     </>
   );

@@ -439,3 +439,24 @@ section h2 {
   font-size: 0.85rem;
   color: #64748b;
 }
+
+.job-filters {
+  margin-bottom: 1rem;
+}
+
+.job-filters-grid {
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .job-filters-grid {
+    grid-template-columns: 2fr 1fr 1fr;
+  }
+}
+
+.job-filters-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}

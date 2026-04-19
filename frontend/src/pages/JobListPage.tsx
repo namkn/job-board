@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { IconTrash } from "../components/Icons";
 import {
   deleteJson,
@@ -11,7 +11,6 @@ import type { PageResult } from "../types/pagination";
 import { formatDt } from "../utils/format";
 
 export default function JobListPage() {
-  const navigate = useNavigate();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,17 +18,40 @@ export default function JobListPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
+  const [draftKeyword, setDraftKeyword] = useState("");
+  const [draftCreatedFrom, setDraftCreatedFrom] = useState("");
+  const [draftCreatedTo, setDraftCreatedTo] = useState("");
+  const [appliedKeyword, setAppliedKeyword] = useState("");
+  const [appliedCreatedFrom, setAppliedCreatedFrom] = useState("");
+  const [appliedCreatedTo, setAppliedCreatedTo] = useState("");
+
   const [title, setTitle] = useState("");
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const jobsQueryString = useCallback(() => {
+    const params = new URLSearchParams();
+    params.set("page", String(page));
+    params.set("pageSize", "5");
+    const kw = appliedKeyword.trim();
+    if (kw) params.set("q", kw);
+    if (appliedCreatedFrom) params.set("createdFrom", appliedCreatedFrom);
+    if (appliedCreatedTo) params.set("createdTo", appliedCreatedTo);
+    return params.toString();
+  }, [
+    page,
+    appliedKeyword,
+    appliedCreatedFrom,
+    appliedCreatedTo,
+  ]);
 
   const loadJobs = useCallback(async () => {
     setError(null);
     setLoading(true);
     try {
       const data = await getJson<PageResult<Job>>(
-        `/jobs?page=${encodeURIComponent(String(page))}&pageSize=5`,
+        `/jobs?${jobsQueryString()}`,
       );
       setJobs(data.items);
       setTotalPages(data.totalPages);
@@ -38,11 +60,16 @@ export default function JobListPage() {
     } finally {
       setLoading(false);
     }
-  }, [navigate, page]);
+  }, [jobsQueryString]);
 
   useEffect(() => {
     void loadJobs();
-  }, [navigate, loadJobs]);
+  }, [loadJobs]);
+
+  const hasActiveFilters =
+    appliedKeyword.trim().length > 0 ||
+    appliedCreatedFrom.length > 0 ||
+    appliedCreatedTo.length > 0;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -130,10 +157,73 @@ export default function JobListPage() {
 
       <section>
         <h2>Open positions</h2>
+        <div className="job-filters">
+          <div className="form-grid job-filters-grid">
+            <label>
+              Keyword
+              <input
+                type="search"
+                value={draftKeyword}
+                onChange={(e) => setDraftKeyword(e.target.value)}
+                placeholder="Title, location, or description"
+                maxLength={200}
+              />
+            </label>
+            <label>
+              Created from
+              <input
+                type="date"
+                value={draftCreatedFrom}
+                onChange={(e) => setDraftCreatedFrom(e.target.value)}
+              />
+            </label>
+            <label>
+              Created to
+              <input
+                type="date"
+                value={draftCreatedTo}
+                onChange={(e) => setDraftCreatedTo(e.target.value)}
+              />
+            </label>
+          </div>
+          <div className="job-filters-actions">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => {
+                setAppliedKeyword(draftKeyword.trim());
+                setAppliedCreatedFrom(draftCreatedFrom);
+                setAppliedCreatedTo(draftCreatedTo);
+                setPage(1);
+              }}
+            >
+              Apply filters
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => {
+                setDraftKeyword("");
+                setDraftCreatedFrom("");
+                setDraftCreatedTo("");
+                setAppliedKeyword("");
+                setAppliedCreatedFrom("");
+                setAppliedCreatedTo("");
+                setPage(1);
+              }}
+            >
+              Clear
+            </button>
+          </div>
+        </div>
         {loading ? (
           <p className="loading">Loading jobs…</p>
         ) : jobs.length === 0 ? (
-          <p className="empty">No jobs yet. Post one above.</p>
+          <p className="empty">
+            {hasActiveFilters
+              ? "No jobs match your filters."
+              : "No jobs yet. Post one above."}
+          </p>
         ) : (
           <ul className="job-list">
             {jobs.map((job) => (

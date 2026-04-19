@@ -34,6 +34,27 @@ function queryInt(
   return undefined;
 }
 
+function queryString(req: express.Request, key: string): string | undefined {
+  const raw = (req.query as Record<string, unknown>)[key];
+  if (typeof raw === "string") return raw;
+  if (Array.isArray(raw) && typeof raw[0] === "string") return raw[0];
+  return undefined;
+}
+
+/** `YYYY-MM-DD` → UTC start of that calendar day */
+function parseDateOnlyStartUtc(value: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const d = new Date(`${value}T00:00:00.000Z`);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/** `YYYY-MM-DD` → UTC end of that calendar day (inclusive) */
+function parseDateOnlyEndUtc(value: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const d = new Date(`${value}T23:59:59.999Z`);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
 const jobOrganizationSelect = {
   id: true,
   name: true,
@@ -237,11 +258,56 @@ app.get("/jobs", requireEmployerJwt, async (req, res) => {
   const pageSize = Math.min(50, Math.max(1, pageSizeRaw));
   const skip = (page - 1) * pageSize;
 
+  const qRaw = queryString(req, "q");
+  const q = qRaw?.trim().slice(0, 200) ?? "";
+  const createdFromRaw = queryString(req, "createdFrom")?.trim() ?? "";
+  const createdToRaw = queryString(req, "createdTo")?.trim() ?? "";
+
+  const createdFrom = createdFromRaw
+    ? parseDateOnlyStartUtc(createdFromRaw)
+    : null;
+  const createdTo = createdToRaw ? parseDateOnlyEndUtc(createdToRaw) : null;
+
+  if (createdFromRaw && !createdFrom) {
+    res.status(400).json({ error: "createdFrom must be YYYY-MM-DD" });
+    return;
+  }
+  if (createdToRaw && !createdTo) {
+    res.status(400).json({ error: "createdTo must be YYYY-MM-DD" });
+    return;
+  }
+  if (createdFrom && createdTo && createdFrom.getTime() > createdTo.getTime()) {
+    res.status(400).json({ error: "createdFrom must be on or before createdTo" });
+    return;
+  }
+
+  const where: Prisma.JobWhereInput = { organizationId };
+  const and: Prisma.JobWhereInput[] = [];
+
+  if (q.length > 0) {
+    and.push({
+      OR: [
+        { title: { contains: q, mode: "insensitive" } },
+        { description: { contains: q, mode: "insensitive" } },
+        { location: { contains: q, mode: "insensitive" } },
+      ],
+    });
+  }
+  if (createdFrom) {
+    and.push({ createdAt: { gte: createdFrom } });
+  }
+  if (createdTo) {
+    and.push({ createdAt: { lte: createdTo } });
+  }
+  if (and.length > 0) {
+    where.AND = and;
+  }
+
   try {
     const [total, items] = await prisma.$transaction([
-      prisma.job.count({ where: { organizationId } }),
+      prisma.job.count({ where }),
       prisma.job.findMany({
-        where: { organizationId },
+        where,
         orderBy: { createdAt: "desc" },
         skip,
         take: pageSize,

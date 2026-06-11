@@ -4,6 +4,12 @@ import bcrypt from "bcryptjs";
 import cors from "cors";
 import express from "express";
 import { Prisma, PrismaClient } from "@prisma/client";
+import {
+  validateApplicantEmail,
+  validateApplicantName,
+  validateCoverNote,
+  validateResumeUrl,
+} from "./applyValidation.js";
 import { signEmployerToken } from "./employerToken.js";
 import { requireEmployerJwt } from "./requireEmployerJwt.js";
 
@@ -248,6 +254,150 @@ app.post("/auth/employers/login", async (req, res) => {
     });
   } catch {
     res.status(500).json({ error: "Failed to log in" });
+  }
+});
+
+const publishedJobFilter = { status: "PUBLISHED" as const };
+
+app.get("/public/jobs", async (req, res) => {
+  const page = Math.max(1, queryInt(req, "page") ?? 1);
+  const pageSizeRaw = queryInt(req, "pageSize") ?? 10;
+  const pageSize = Math.min(50, Math.max(1, pageSizeRaw));
+  const skip = (page - 1) * pageSize;
+
+  try {
+    const [total, items] = await prisma.$transaction([
+      prisma.job.count({ where: publishedJobFilter }),
+      prisma.job.findMany({
+        where: publishedJobFilter,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: pageSize,
+        include: { organization: { select: jobOrganizationSelect } },
+      }),
+    ]);
+
+    res.json({
+      items,
+      page,
+      pageSize,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    });
+  } catch {
+    res.status(500).json({ error: "Failed to fetch jobs" });
+  }
+});
+
+app.get("/public/jobs/:id", async (req, res) => {
+  const id = jobIdParam(req);
+  if (!id) {
+    res.status(400).json({ error: "Missing job id" });
+    return;
+  }
+  try {
+    const job = await prisma.job.findFirst({
+      where: { id, ...publishedJobFilter },
+      include: { organization: { select: jobOrganizationSelect } },
+    });
+    if (!job) {
+      res.status(404).json({ error: "Job not found" });
+      return;
+    }
+    res.json(job);
+  } catch {
+    res.status(500).json({ error: "Failed to fetch job" });
+  }
+});
+
+app.post("/public/jobs/:id/applications", async (req, res) => {
+  const jobId = jobIdParam(req);
+  if (!jobId) {
+    res.status(400).json({ error: "Missing job id" });
+    return;
+  }
+
+  const body = req.body as Record<string, unknown>;
+  const name = typeof body.name === "string" ? body.name : "";
+  const email = typeof body.email === "string" ? body.email : "";
+  const resumeUrl = typeof body.resumeUrl === "string" ? body.resumeUrl : "";
+  const coverNoteRaw = typeof body.coverNote === "string" ? body.coverNote : "";
+
+  const validationError =
+    validateApplicantName(name) ??
+    validateApplicantEmail(email) ??
+    validateResumeUrl(resumeUrl) ??
+    validateCoverNote(coverNoteRaw);
+  if (validationError) {
+    res.status(400).json({ error: validationError });
+    return;
+  }
+
+  const trimmedEmail = email.trim().toLowerCase();
+  const trimmedName = name.trim();
+  const trimmedResumeUrl = resumeUrl.trim();
+  const coverNote = coverNoteRaw.trim() || null;
+
+  try {
+    const job = await prisma.job.findFirst({
+      where: { id: jobId, status: "PUBLISHED" },
+      select: { id: true },
+    });
+    if (!job) {
+      res.status(404).json({ error: "Job not found" });
+      return;
+    }
+
+    const application = await prisma.$transaction(async (tx) => {
+      let user = await tx.user.findUnique({ where: { email: trimmedEmail } });
+      if (user) {
+        user = await tx.user.update({
+          where: { id: user.id },
+          data: { name: trimmedName },
+        });
+      } else {
+        user = await tx.user.create({
+          data: {
+            email: trimmedEmail,
+            name: trimmedName,
+            passwordHash: null,
+          },
+        });
+      }
+
+      await tx.candidateProfile.upsert({
+        where: { userId: user.id },
+        create: { userId: user.id },
+        update: {},
+      });
+
+      return tx.application.create({
+        data: {
+          jobId,
+          userId: user.id,
+          resumeUrl: trimmedResumeUrl,
+          coverNote,
+        },
+      });
+    });
+
+    res.status(201).json({
+      id: application.id,
+      jobId: application.jobId,
+      status: application.status,
+      createdAt: application.createdAt,
+    });
+  } catch (e) {
+    if (
+      e instanceof Prisma.PrismaClientKnownRequestError &&
+      e.code === "P2002"
+    ) {
+      res.status(409).json({
+        error: "You have already applied to this job with this email",
+      });
+      return;
+    }
+    res.status(500).json({ error: "Failed to submit application" });
   }
 });
 

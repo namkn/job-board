@@ -82,6 +82,45 @@ section h2 {
   margin: 0 0 0.75rem;
 }
 
+.success {
+  color: #15803d;
+  font-size: 0.9rem;
+  margin: 0;
+  padding: 0.75rem 1rem;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+}
+
+.public-header {
+  margin-bottom: 1.5rem;
+}
+
+.public-header h1 {
+  margin-bottom: 0.35rem;
+}
+
+.public-lead {
+  margin: 0 0 0.75rem;
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+.public-employer-link {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.public-employer-link:hover {
+  text-decoration: underline;
+}
+
+.apply-intro {
+  margin-top: 0;
+}
+
 .job-list {
   list-style: none;
   margin: 0;

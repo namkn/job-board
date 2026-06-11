@@ -26,6 +26,8 @@ function mockJob(overrides: Partial<Job> = {}): Job {
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-02T00:00:00.000Z",
     organization: { id: "org-1", name: "Acme Corp", slug: "acme" },
+    viewCount: 12,
+    applicationCount: 3,
     ...overrides,
   };
 }
@@ -75,7 +77,9 @@ describe("JobListPage", () => {
     expect(screen.getByText("Acme Corp · Remote")).toBeInTheDocument();
     expect(screen.getByText("Build APIs")).toBeInTheDocument();
 
-    expect(getJson).toHaveBeenCalledWith("/jobs?page=1&pageSize=5");
+    expect(getJson).toHaveBeenCalledWith(
+      "/jobs?page=1&pageSize=5&sort=createdDesc",
+    );
   });
 
   it("shows empty state when there are no jobs", async () => {
@@ -86,6 +90,54 @@ describe("JobListPage", () => {
     expect(
       await screen.findByText("No jobs yet. Post one above."),
     ).toBeInTheDocument();
+  });
+
+  it("resets sort to date created when filters are cleared", async () => {
+    vi.mocked(getJson).mockResolvedValue(pageResult([mockJob()]));
+
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByRole("link", { name: "Backend Engineer" });
+
+    await user.selectOptions(screen.getByLabelText("Sort by"), "viewCountDesc");
+    await user.type(screen.getByPlaceholderText("Title, location, or description"), "foo");
+    await user.click(screen.getByRole("button", { name: "Clear" }));
+
+    await waitFor(() => {
+      expect(getJson).toHaveBeenLastCalledWith(
+        "/jobs?page=1&pageSize=5&sort=createdDesc",
+      );
+    });
+    expect(screen.getByLabelText("Sort by")).toHaveValue("createdDesc");
+  });
+
+  it("reloads with sort when sort changes", async () => {
+    vi.mocked(getJson).mockResolvedValue(pageResult([mockJob()]));
+
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByRole("link", { name: "Backend Engineer" });
+
+    await user.selectOptions(screen.getByLabelText("Sort by"), "viewCountDesc");
+
+    await waitFor(() => {
+      expect(getJson).toHaveBeenLastCalledWith(
+        "/jobs?page=1&pageSize=5&sort=viewCountDesc",
+      );
+    });
+
+    await user.selectOptions(
+      screen.getByLabelText("Sort by"),
+      "createdDesc",
+    );
+
+    await waitFor(() => {
+      expect(getJson).toHaveBeenLastCalledWith(
+        "/jobs?page=1&pageSize=5&sort=createdDesc",
+      );
+    });
   });
 
   it("shows filtered empty state when filters match nothing", async () => {
@@ -100,7 +152,9 @@ describe("JobListPage", () => {
     await user.click(screen.getByRole("button", { name: "Apply filters" }));
 
     await waitFor(() => {
-      expect(getJson).toHaveBeenLastCalledWith("/jobs?page=1&pageSize=5&q=xyz");
+      expect(getJson).toHaveBeenLastCalledWith(
+        "/jobs?page=1&pageSize=5&q=xyz&sort=createdDesc",
+      );
     });
     expect(
       await screen.findByText("No jobs match your filters."),
@@ -204,7 +258,9 @@ describe("JobListPage", () => {
     await user.click(screen.getByRole("button", { name: "Next" }));
 
     await waitFor(() => {
-      expect(getJson).toHaveBeenLastCalledWith("/jobs?page=2&pageSize=5");
+      expect(getJson).toHaveBeenLastCalledWith(
+        "/jobs?page=2&pageSize=5&sort=createdDesc",
+      );
     });
     expect(await screen.findByRole("link", { name: "Job B" }))
       .toBeInTheDocument();
@@ -222,13 +278,17 @@ describe("JobListPage", () => {
     await user.click(screen.getByRole("button", { name: "Apply filters" }));
 
     await waitFor(() => {
-      expect(getJson).toHaveBeenLastCalledWith("/jobs?page=1&pageSize=5&q=foo");
+      expect(getJson).toHaveBeenLastCalledWith(
+        "/jobs?page=1&pageSize=5&q=foo&sort=createdDesc",
+      );
     });
 
     await user.click(screen.getByRole("button", { name: "Clear" }));
 
     await waitFor(() => {
-      expect(getJson).toHaveBeenLastCalledWith("/jobs?page=1&pageSize=5");
+      expect(getJson).toHaveBeenLastCalledWith(
+        "/jobs?page=1&pageSize=5&sort=createdDesc",
+      );
     });
     expect(screen.getByPlaceholderText("Title, location, or description")).toHaveValue("");
   });

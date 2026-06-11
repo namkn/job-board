@@ -39,6 +39,8 @@ function mockJob(overrides: Partial<Job> = {}): Job {
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-02T00:00:00.000Z",
     organization: { id: "org-1", name: "Acme Corp", slug: "acme" },
+    viewCount: 12,
+    applicationCount: 3,
     ...overrides,
   };
 }

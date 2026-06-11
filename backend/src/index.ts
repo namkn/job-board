@@ -4,6 +4,12 @@ import bcrypt from "bcryptjs";
 import cors from "cors";
 import express from "express";
 import { Prisma, PrismaClient } from "@prisma/client";
+import { isApplicationStatus } from "./applicationStatus.js";
+import {
+  DEFAULT_EMPLOYER_JOB_SORT,
+  employerJobOrderBy,
+  isEmployerJobSort,
+} from "./employerJobSort.js";
 import {
   validateApplicantEmail,
   validateApplicantName,
@@ -19,6 +25,13 @@ const port = Number(process.env.PORT) || 3000;
 
 function jobIdParam(req: express.Request): string | undefined {
   const p = req.params.id;
+  if (typeof p === "string") return p;
+  if (Array.isArray(p)) return p[0];
+  return undefined;
+}
+
+function applicationIdParam(req: express.Request): string | undefined {
+  const p = req.params.applicationId;
   if (typeof p === "string") return p;
   if (Array.isArray(p)) return p[0];
   return undefined;
@@ -66,6 +79,23 @@ const jobOrganizationSelect = {
   name: true,
   slug: true,
 } as const;
+
+const employerJobInclude = {
+  organization: { select: jobOrganizationSelect },
+  _count: { select: { applications: true } },
+} as const;
+
+type EmployerJobRow = Prisma.JobGetPayload<{
+  include: typeof employerJobInclude;
+}>;
+
+function toEmployerJobJson(job: EmployerJobRow) {
+  const { _count, ...rest } = job;
+  return {
+    ...rest,
+    applicationCount: _count.applications,
+  };
+}
 
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -259,18 +289,30 @@ app.post("/auth/employers/login", async (req, res) => {
 
 const publishedJobFilter = { status: "PUBLISHED" as const };
 
+/** Public job list sort: newest first (stable tie-break on id). */
+const publicJobsOrderBy = [
+  { createdAt: "desc" as const },
+  { id: "desc" as const },
+];
+
 app.get("/public/jobs", async (req, res) => {
   const page = Math.max(1, queryInt(req, "page") ?? 1);
   const pageSizeRaw = queryInt(req, "pageSize") ?? 10;
   const pageSize = Math.min(50, Math.max(1, pageSizeRaw));
   const skip = (page - 1) * pageSize;
 
+  const sort = queryString(req, "sort")?.trim() ?? "createdDesc";
+  if (sort !== "createdDesc") {
+    res.status(400).json({ error: "sort must be createdDesc" });
+    return;
+  }
+
   try {
     const [total, items] = await prisma.$transaction([
       prisma.job.count({ where: publishedJobFilter }),
       prisma.job.findMany({
         where: publishedJobFilter,
-        orderBy: { createdAt: "desc" },
+        orderBy: publicJobsOrderBy,
         skip,
         take: pageSize,
         include: { organization: { select: jobOrganizationSelect } },
@@ -283,6 +325,7 @@ app.get("/public/jobs", async (req, res) => {
       pageSize,
       total,
       totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      sort,
     });
   } catch {
     res.status(500).json({ error: "Failed to fetch jobs" });
@@ -296,14 +339,20 @@ app.get("/public/jobs/:id", async (req, res) => {
     return;
   }
   try {
-    const job = await prisma.job.findFirst({
+    const existing = await prisma.job.findFirst({
       where: { id, ...publishedJobFilter },
-      include: { organization: { select: jobOrganizationSelect } },
+      select: { id: true },
     });
-    if (!job) {
+    if (!existing) {
       res.status(404).json({ error: "Job not found" });
       return;
     }
+
+    const job = await prisma.job.update({
+      where: { id },
+      data: { viewCount: { increment: 1 } },
+      include: { organization: { select: jobOrganizationSelect } },
+    });
     res.json(job);
   } catch {
     res.status(500).json({ error: "Failed to fetch job" });
@@ -431,6 +480,15 @@ app.get("/jobs", requireEmployerJwt, async (req, res) => {
     return;
   }
 
+  const sort = queryString(req, "sort")?.trim() ?? DEFAULT_EMPLOYER_JOB_SORT;
+  if (!isEmployerJobSort(sort)) {
+    res.status(400).json({
+      error:
+        "sort must be one of: createdDesc, viewCountDesc, applicationCountDesc",
+    });
+    return;
+  }
+
   const where: Prisma.JobWhereInput = { organizationId };
   const and: Prisma.JobWhereInput[] = [];
 
@@ -458,21 +516,22 @@ app.get("/jobs", requireEmployerJwt, async (req, res) => {
       prisma.job.count({ where }),
       prisma.job.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy: employerJobOrderBy(sort),
         skip,
         take: pageSize,
-        include: { organization: { select: jobOrganizationSelect } },
+        include: employerJobInclude,
       }),
     ]);
 
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
     res.json({
-      items,
+      items: items.map(toEmployerJobJson),
       page,
       pageSize,
       total,
       totalPages,
+      sort,
     });
   } catch {
     res.status(500).json({ error: "Failed to fetch jobs" });
@@ -489,17 +548,101 @@ app.get("/jobs/:id", requireEmployerJwt, async (req, res) => {
   try {
     const job = await prisma.job.findFirst({
       where: { id, organizationId },
-      include: { organization: { select: jobOrganizationSelect } },
+      include: employerJobInclude,
     });
     if (!job) {
       res.status(404).json({ error: "Job not found" });
       return;
     }
-    res.json(job);
+    res.json(toEmployerJobJson(job));
   } catch {
     res.status(500).json({ error: "Failed to fetch job" });
   }
 });
+
+app.get("/jobs/:id/applications", requireEmployerJwt, async (req, res) => {
+  const jobId = jobIdParam(req);
+  const organizationId = req.employer!.organizationId;
+  if (!jobId) {
+    res.status(400).json({ error: "Missing job id" });
+    return;
+  }
+
+  try {
+    const job = await prisma.job.findFirst({
+      where: { id: jobId, organizationId },
+      select: { id: true, title: true },
+    });
+    if (!job) {
+      res.status(404).json({ error: "Job not found" });
+      return;
+    }
+
+    const applications = await prisma.application.findMany({
+      where: { jobId },
+      orderBy: { createdAt: "desc" },
+      include: {
+        user: { select: { id: true, email: true, name: true } },
+      },
+    });
+
+    res.json({ job, items: applications });
+  } catch {
+    res.status(500).json({ error: "Failed to fetch applications" });
+  }
+});
+
+app.patch(
+  "/jobs/:id/applications/:applicationId",
+  requireEmployerJwt,
+  async (req, res) => {
+    const jobId = jobIdParam(req);
+    const applicationId = applicationIdParam(req);
+    const organizationId = req.employer!.organizationId;
+    if (!jobId || !applicationId) {
+      res.status(400).json({ error: "Missing job or application id" });
+      return;
+    }
+
+    const body = req.body as Record<string, unknown>;
+    const status =
+      typeof body.status === "string" ? body.status.trim().toUpperCase() : "";
+    if (!isApplicationStatus(status)) {
+      res.status(400).json({
+        error:
+          "status must be one of: PENDING, SCREENING, INTERVIEW, HIRED, REJECTED",
+      });
+      return;
+    }
+
+    try {
+      const existing = await prisma.application.findFirst({
+        where: {
+          id: applicationId,
+          jobId,
+          job: { organizationId },
+        },
+        select: { id: true },
+      });
+      if (!existing) {
+        res.status(404).json({ error: "Application not found" });
+        return;
+      }
+
+      const application = await prisma.application.update({
+        where: { id: applicationId },
+        data: { status },
+        include: {
+          user: { select: { id: true, email: true, name: true } },
+        },
+      });
+      res.json(application);
+    } catch (e) {
+      console.error("Failed to update application:", e);
+      res.status(500).json({ error: "Failed to update application" });
+    }
+  },
+);
 
 app.post("/jobs", requireEmployerJwt, async (req, res) => {
   const organizationId = req.employer!.organizationId;
@@ -537,9 +680,9 @@ app.post("/jobs", requireEmployerJwt, async (req, res) => {
         description: trimmed.description,
         status: "PUBLISHED",
       },
-      include: { organization: { select: jobOrganizationSelect } },
+      include: employerJobInclude,
     });
-    res.status(201).json(job);
+    res.status(201).json(toEmployerJobJson(job));
   } catch {
     res.status(500).json({ error: "Failed to create job" });
   }
@@ -595,9 +738,9 @@ app.patch("/jobs/:id", requireEmployerJwt, async (req, res) => {
         location: trimmed.location,
         description: trimmed.description,
       },
-      include: { organization: { select: jobOrganizationSelect } },
+      include: employerJobInclude,
     });
-    res.json(job);
+    res.json(toEmployerJobJson(job));
   } catch (e) {
     if (
       e instanceof Prisma.PrismaClientKnownRequestError &&

@@ -3,6 +3,7 @@ import "./App.css";
 import RequireEmployerAuth from "./components/RequireEmployerAuth";
 import EmployerLoginPage from "./pages/EmployerLoginPage";
 import EmployerSignupPage from "./pages/EmployerSignupPage";
+import JobApplicationsPage from "./pages/JobApplicationsPage";
 import JobDetailPage from "./pages/JobDetailPage";
 import JobListPage from "./pages/JobListPage";
 import PublicJobDetailPage from "./pages/PublicJobDetailPage";
@@ -20,8 +21,12 @@ export default function App() {
         <Route path="/employers/login" element={<EmployerLoginPage />} />
         <Route element={<RequireEmployerAuth />}>
           <Route path="/employers/jobs" element={<JobListPage />} />
+          <Route
+            path="/employers/jobs/:id/applications"
+            element={<JobApplicationsPage />}
+          />
           <Route path="/employers/jobs/:id" element={<JobDetailPage />} />
-          <Route path="/employers/stocks" element={<StocksPage />} />
+          {/* <Route path="/employers/stocks" element={<StocksPage />} /> */}
         </Route>
       </Routes>
     </BrowserRouter>

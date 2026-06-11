@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { IconPencil, IconTrash } from "../components/Icons";
+import { JobStats } from "../components/JobStats";
 import {
   ApiError,
   deleteJson,
@@ -209,6 +210,11 @@ export default function JobDetailPage() {
               <div className="job-meta detail-meta">
                 {job.organization.name} · {job.location}
               </div>
+              <JobStats
+                jobId={job.id}
+                viewCount={job.viewCount}
+                applicationCount={job.applicationCount}
+              />
               <div className="job-times">
                 <span>Created {formatDt(job.createdAt)}</span>
                 <span>Updated {formatDt(job.updatedAt)}</span>

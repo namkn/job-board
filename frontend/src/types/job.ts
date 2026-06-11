@@ -9,6 +9,8 @@ export type Job = {
   title: string;
   location: string;
   description: string;
+  viewCount?: number;
+  applicationCount?: number;
   createdAt: string;
   updatedAt: string;
   organization: JobOrganization;

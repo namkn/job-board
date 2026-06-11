@@ -17,7 +17,7 @@ export function usePublicJobs(pageSize = DEFAULT_PAGE_SIZE) {
     setLoading(true);
     try {
       const data = await getJson<PageResult<Job>>(
-        `/public/jobs?page=${encodeURIComponent(String(page))}&pageSize=${encodeURIComponent(String(pageSize))}`,
+        `/public/jobs?page=${encodeURIComponent(String(page))}&pageSize=${encodeURIComponent(String(pageSize))}&sort=createdDesc`,
       );
       setJobs(data.items);
       setTotalPages(data.totalPages);

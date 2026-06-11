@@ -2,6 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import { deleteJson, getJson, postJson } from "../api";
 import type { Job } from "../types/job";
 import type { PageResult } from "../types/pagination";
+import {
+  DEFAULT_EMPLOYER_JOB_SORT,
+  type EmployerJobSort,
+} from "../utils/employerJobSort";
 
 const DEFAULT_PAGE_SIZE = 5;
 
@@ -19,6 +23,7 @@ export function useJobs(pageSize = DEFAULT_PAGE_SIZE) {
   const [appliedKeyword, setAppliedKeyword] = useState("");
   const [appliedCreatedFrom, setAppliedCreatedFrom] = useState("");
   const [appliedCreatedTo, setAppliedCreatedTo] = useState("");
+  const [sort, setSort] = useState<EmployerJobSort>(DEFAULT_EMPLOYER_JOB_SORT);
 
   const [title, setTitle] = useState("");
   const [location, setLocation] = useState("");
@@ -33,6 +38,7 @@ export function useJobs(pageSize = DEFAULT_PAGE_SIZE) {
     if (kw) params.set("q", kw);
     if (appliedCreatedFrom) params.set("createdFrom", appliedCreatedFrom);
     if (appliedCreatedTo) params.set("createdTo", appliedCreatedTo);
+    params.set("sort", sort);
     return params.toString();
   }, [
     page,
@@ -40,6 +46,7 @@ export function useJobs(pageSize = DEFAULT_PAGE_SIZE) {
     appliedKeyword,
     appliedCreatedFrom,
     appliedCreatedTo,
+    sort,
   ]);
 
   const loadJobs = useCallback(async () => {
@@ -81,6 +88,12 @@ export function useJobs(pageSize = DEFAULT_PAGE_SIZE) {
     setAppliedKeyword("");
     setAppliedCreatedFrom("");
     setAppliedCreatedTo("");
+    setSort(DEFAULT_EMPLOYER_JOB_SORT);
+    setPage(1);
+  }
+
+  function changeSort(next: EmployerJobSort) {
+    setSort(next);
     setPage(1);
   }
 
@@ -154,5 +167,7 @@ export function useJobs(pageSize = DEFAULT_PAGE_SIZE) {
     createJob,
     deleteJob,
     setPage,
+    sort,
+    changeSort,
   };
 }

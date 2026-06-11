@@ -1,6 +1,11 @@
 import { Link } from "react-router-dom";
 import { IconTrash } from "../components/Icons";
+import { JobStats } from "../components/JobStats";
 import { useJobs } from "../hooks/useJobs";
+import {
+  EMPLOYER_JOB_SORTS,
+  employerJobSortLabel,
+} from "../utils/employerJobSort";
 import { formatDt } from "../utils/format";
 
 export default function JobListPage() {
@@ -30,6 +35,8 @@ export default function JobListPage() {
     createJob,
     deleteJob,
     setPage,
+    sort,
+    changeSort,
   } = useJobs();
 
   return (
@@ -102,6 +109,21 @@ export default function JobListPage() {
                 onChange={(e) => setDraftCreatedTo(e.target.value)}
               />
             </label>
+            <label>
+              Sort by
+              <select
+                value={sort}
+                onChange={(e) =>
+                  changeSort(e.target.value as typeof sort)
+                }
+              >
+                {EMPLOYER_JOB_SORTS.map((option) => (
+                  <option key={option} value={option}>
+                    {employerJobSortLabel(option)}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
           <div className="job-filters-actions">
             <button
@@ -156,6 +178,11 @@ export default function JobListPage() {
                 <div className="job-meta">
                   {job.organization.name} · {job.location}
                 </div>
+                <JobStats
+                  jobId={job.id}
+                  viewCount={job.viewCount}
+                  applicationCount={job.applicationCount}
+                />
                 <div className="job-times">
                   <span>Created {formatDt(job.createdAt)}</span>
                   <span>Updated {formatDt(job.updatedAt)}</span>

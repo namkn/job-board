@@ -11,6 +11,7 @@ import EmployerLoginPage from "./pages/EmployerLoginPage";
 import EmployerSignupPage from "./pages/EmployerSignupPage";
 import JobDetailPage from "./pages/JobDetailPage";
 import JobListPage from "./pages/JobListPage";
+import StocksPage from "./pages/StocksPage";
 
 function LegacyJobDetailRedirect() {
   const { id } = useParams<{ id: string }>();
@@ -28,6 +29,7 @@ export default function App() {
         <Route element={<RequireEmployerAuth />}>
           <Route path="/employers/jobs" element={<JobListPage />} />
           <Route path="/employers/jobs/:id" element={<JobDetailPage />} />
+          <Route path="/employers/stocks" element={<StocksPage />} />
         </Route>
         <Route path="/jobs/:id" element={<LegacyJobDetailRedirect />} />
       </Routes>

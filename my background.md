@@ -1642,3 +1642,16 @@ Just the revised experience section with the new Stripe bullet added in the righ
 
 Let me know which you prefer.
 
+
+
+Integrations & async processing: Implemented Sendgrid webhooks, Stripe payment flows (one-time and recurring, high daily volume), and delayed/cancellable job processing (RabbitMQ DLX) for operational workflows—experience applicable to carrier/vendor-style integrations and event-driven systems.
+
+Stripe payment Bullet:
+Designed and implemented secure payment processing with Stripe — owned integration for high-volume one-time and recurring subscription charges, with careful handling of sensitive customer data and reliable webhook-driven reconciliation, supporting tens of thousands of dollars in daily transaction volume.
+
+We do have microservices written in Node.js - Scraping service, DataService (extracting fields from raw content), Cashier, Zendesk, JobVectorService
+
+70/30
+
+Summary obtained by Steven:
+Senior full-stack engineer with 10+ years owning and modernizing a large-scale SaaS platform end-to-end (APIs, distributed workers/queues, data-heavy features, performance tuning). Recent hands-on Node.js/TypeScript + React + PostgreSQL/Docker project work, plus AI-powered automation (OpenAI-based extraction/parsing). Strong in cross-functional delivery (product/design), mentoring, and production troubleshooting in AWS-hosted Linux environments. Remote-ready and flexible across US time zones.

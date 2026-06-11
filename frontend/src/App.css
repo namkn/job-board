@@ -98,6 +98,158 @@ section h2 {
   background: #f8fafc;
 }
 
+.stocks-intro {
+  margin: -0.75rem 0 1.25rem;
+  font-size: 0.9rem;
+  color: #64748b;
+}
+
+.stocks-poll-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.stocks-poll-status {
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.stocks-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  align-items: stretch;
+}
+
+@media (max-width: 720px) {
+  .stocks-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 721px) and (max-width: 900px) {
+  .stocks-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.stock-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1rem 1.15rem;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.stock-card-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.stock-card-symbol {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #0f172a;
+}
+
+.stock-card-price {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.stock-card-change {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.stock-card-arrow {
+  font-size: 1rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.stock-card-change-values {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.5rem;
+}
+
+.stock-card-change-pct {
+  font-weight: 600;
+  opacity: 0.92;
+}
+
+.stock-card-change--up {
+  color: #047857;
+}
+
+.stock-card-change--up .stock-card-arrow {
+  color: #059669;
+}
+
+.stock-card-change--down {
+  color: #b91c1c;
+}
+
+.stock-card-change--down .stock-card-arrow {
+  color: #dc2626;
+}
+
+.stock-card-change--flat {
+  color: #64748b;
+}
+
+.stock-card-range {
+  margin: 0.15rem 0 0;
+  padding-top: 0.65rem;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.stock-card-range-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.stock-card-range dt {
+  margin: 0;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.stock-card-range dd {
+  margin: 0;
+  font-weight: 600;
+  color: #334155;
+  font-variant-numeric: tabular-nums;
+}
+
 .job-card-header-row {
   display: flex;
   align-items: flex-start;

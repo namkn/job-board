@@ -47,6 +47,16 @@ export default function RequireEmployerAuth() {
             Jobs
           </NavLink>
         </nav>
+        <nav className="employer-nav">
+          <NavLink
+            to="/employers/stocks"
+            className={({ isActive }) =>
+              `employer-nav-link${isActive ? " is-active" : ""}`
+            }
+          >
+            Stocks
+          </NavLink>
+        </nav>
         <button
           type="button"
           className="btn-secondary"

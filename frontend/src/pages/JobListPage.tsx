@@ -1,119 +1,36 @@
-import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { IconTrash } from "../components/Icons";
-import {
-  deleteJson,
-  getJson,
-  postJson,
-} from "../api";
-import type { Job } from "../types/job";
-import type { PageResult } from "../types/pagination";
+import { useJobs } from "../hooks/useJobs";
 import { formatDt } from "../utils/format";
 
 export default function JobListPage() {
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-
-  const [draftKeyword, setDraftKeyword] = useState("");
-  const [draftCreatedFrom, setDraftCreatedFrom] = useState("");
-  const [draftCreatedTo, setDraftCreatedTo] = useState("");
-  const [appliedKeyword, setAppliedKeyword] = useState("");
-  const [appliedCreatedFrom, setAppliedCreatedFrom] = useState("");
-  const [appliedCreatedTo, setAppliedCreatedTo] = useState("");
-
-  const [title, setTitle] = useState("");
-  const [location, setLocation] = useState("");
-  const [description, setDescription] = useState("");
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  const jobsQueryString = useCallback(() => {
-    const params = new URLSearchParams();
-    params.set("page", String(page));
-    params.set("pageSize", "5");
-    const kw = appliedKeyword.trim();
-    if (kw) params.set("q", kw);
-    if (appliedCreatedFrom) params.set("createdFrom", appliedCreatedFrom);
-    if (appliedCreatedTo) params.set("createdTo", appliedCreatedTo);
-    return params.toString();
-  }, [
+  const {
+    jobs,
+    loading,
+    error,
+    submitting,
     page,
-    appliedKeyword,
-    appliedCreatedFrom,
-    appliedCreatedTo,
-  ]);
-
-  const loadJobs = useCallback(async () => {
-    setError(null);
-    setLoading(true);
-    try {
-      const data = await getJson<PageResult<Job>>(
-        `/jobs?${jobsQueryString()}`,
-      );
-      setJobs(data.items);
-      setTotalPages(data.totalPages);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load jobs");
-    } finally {
-      setLoading(false);
-    }
-  }, [jobsQueryString]);
-
-  useEffect(() => {
-    void loadJobs();
-  }, [loadJobs]);
-
-  const hasActiveFilters =
-    appliedKeyword.trim().length > 0 ||
-    appliedCreatedFrom.length > 0 ||
-    appliedCreatedTo.length > 0;
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setSubmitting(true);
-    setError(null);
-    try {
-      await postJson<
-        Job,
-        { title: string; location: string; description: string }
-      >("/jobs", { title, location, description });
-      setTitle("");
-      setLocation("");
-      setDescription("");
-      setPage(1);
-      await loadJobs();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not create job");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleDelete(job: Job) {
-    if (
-      !window.confirm(
-        `Delete “${job.title}”? This cannot be undone.`,
-      )
-    ) {
-      return;
-    }
-    setError(null);
-    setDeletingId(job.id);
-    try {
-      await deleteJson(`/jobs/${encodeURIComponent(job.id)}`);
-      if (jobs.length === 1 && page > 1) {
-        setPage((p) => p - 1);
-      }
-      await loadJobs();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not delete job");
-    } finally {
-      setDeletingId(null);
-    }
-  }
+    totalPages,
+    hasActiveFilters,
+    deletingId,
+    draftKeyword,
+    setDraftKeyword,
+    draftCreatedFrom,
+    setDraftCreatedFrom,
+    draftCreatedTo,
+    setDraftCreatedTo,
+    applyFilters,
+    clearFilters,
+    title,
+    setTitle,
+    location,
+    setLocation,
+    description,
+    setDescription,
+    createJob,
+    deleteJob,
+    setPage,
+  } = useJobs();
 
   return (
     <>
@@ -122,7 +39,7 @@ export default function JobListPage() {
       <section>
         <h2>Post a job</h2>
         {error ? <p className="error">{error}</p> : null}
-        <form className="form-grid" onSubmit={handleSubmit}>
+        <form className="form-grid" onSubmit={(e) => void createJob(e)}>
           <label>
             Title
             <input
@@ -190,27 +107,14 @@ export default function JobListPage() {
             <button
               type="button"
               className="btn-secondary"
-              onClick={() => {
-                setAppliedKeyword(draftKeyword.trim());
-                setAppliedCreatedFrom(draftCreatedFrom);
-                setAppliedCreatedTo(draftCreatedTo);
-                setPage(1);
-              }}
+              onClick={applyFilters}
             >
               Apply filters
             </button>
             <button
               type="button"
               className="btn-secondary"
-              onClick={() => {
-                setDraftKeyword("");
-                setDraftCreatedFrom("");
-                setDraftCreatedTo("");
-                setAppliedKeyword("");
-                setAppliedCreatedFrom("");
-                setAppliedCreatedTo("");
-                setPage(1);
-              }}
+              onClick={clearFilters}
             >
               Clear
             </button>
@@ -243,7 +147,7 @@ export default function JobListPage() {
                     disabled={deletingId === job.id}
                     title="Delete job"
                     aria-label={`Delete job: ${job.title}`}
-                    onClick={() => void handleDelete(job)}
+                    onClick={() => void deleteJob(job)}
                   >
                     <IconTrash className="btn-delete-icon" />
                     Delete
